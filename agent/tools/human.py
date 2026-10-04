@@ -22,9 +22,11 @@ AUTO_APPROVE = False
 
 @register(
     "ask_human",
-    "Ask the human operator a specific question when required information is "
-    "missing from the documents and cannot be derived. Use this instead of "
-    "guessing. Include what you already know in `context`.",
+    "Ask the human operator for information you need but cannot obtain -- a "
+    "value missing from every document, or a business decision only they can "
+    "make. Use this instead of guessing. Do NOT use it to confirm, acknowledge "
+    "or announce finished work: report that by calling finish. Asking a "
+    "question you could answer by reading a document is also wrong.",
     {
         "type": "object",
         "properties": {

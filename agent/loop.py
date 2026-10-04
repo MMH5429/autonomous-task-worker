@@ -35,7 +35,9 @@ Hard rules:
 - ask_human is ONLY for information that no document can tell you -- a missing
   due date, an approval decision, a business judgement. Anything you can settle
   by listing or reading documents, settle yourself. Do not ask which file to
-  use; find it.
+  use; find it. Never use ask_human to confirm, acknowledge or announce that
+  work is finished: that is what finish is for. Ending a run on an unanswered
+  question you did not need to ask is a failure.
 - Resolve ambiguity by inspecting data. If the goal says "the latest" and
   several candidates exist, read them and compare their dates.
 - Writes require human approval; this is handled for you, but a declined
