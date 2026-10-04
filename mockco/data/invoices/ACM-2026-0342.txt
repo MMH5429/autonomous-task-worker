@@ -1,0 +1,17 @@
+Acme Supplies
+================================================
+Tax Invoice ACM-2026-0342
+
+Issued:  2026-03-02
+Due by:  2026-04-01
+
+Customer: CentrAlign AI
+
+Line items
+  - A4 copier paper, 40 reams ............  4,800.00
+  - Toner cartridges (HP 26A) x6 .........  6,180.50
+  - Misc stationery ......................  2,000.00
+
+                        Amount payable:  USD 12,980.50
+
+Remit to Acme Supplies, acct 00419922. Thank you for your business.

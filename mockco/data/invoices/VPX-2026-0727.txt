@@ -1,0 +1,16 @@
+VERTEX PAPER CO.
+Invoice VPX-2026-0727
+
+Date of issue: 27 July 2026
+Sold to: CentrAlign AI
+
+   Qty   Item                                 Amount
+   ---   ----------------------------------   ---------
+    30   Premium bond paper (500 sheets)      14,250.00
+     8   Archival storage boxes                4,055.00
+     1   Delivery                              3,000.00
+                                              ---------
+                              TOTAL USD       21,305.00
+
+NOTE: Payment terms for this account are still being finalised
+with our credit team. A revised copy will follow.

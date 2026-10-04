@@ -1,0 +1,18 @@
+Orbit Cloud Services, Inc.
+Monthly Subscription Invoice
+
+  Invoice number ....... OCS-2026-0811
+  Billing period ....... July 2026
+  Date of issue ........ August 11, 2026
+  Due date ............. September 10, 2026
+
+  Account: CentrAlign AI (org_7741)
+
+  Compute (vCPU-hours)            4,120.00
+  Object storage (2.4 TB)         1,980.00
+  Egress bandwidth                  890.00
+  Support plan - Standard           450.00
+                                ----------
+  Total due                   USD 7,440.00
+
+Questions? billing@orbitcloud.example

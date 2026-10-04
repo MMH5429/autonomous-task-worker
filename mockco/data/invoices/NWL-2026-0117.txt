@@ -1,0 +1,21 @@
+NORTHWIND LOGISTICS PVT LTD
+Plot 14, Transport Nagar, Pune 411019
+GSTIN: 27AADCN1234K1Z9
+
+INVOICE
+
+Invoice No.   : NWL-2026-0117
+Invoice Date  : 17 January 2026
+Payment Due   : 16 February 2026
+Bill To       : CentrAlign AI, Bengaluru
+
+--------------------------------------------------------
+Description                      Qty      Rate     Amount
+--------------------------------------------------------
+Freight - Pune to Bengaluru       12   2,800.00  33,600.00
+Warehousing (Jan 2026)             1  11,400.00  11,400.00
+Handling & documentation           1   3,250.00   3,250.00
+--------------------------------------------------------
+                                      TOTAL USD  48,250.00
+
+Terms: Net 30. Late payments attract 1.5% monthly interest.
