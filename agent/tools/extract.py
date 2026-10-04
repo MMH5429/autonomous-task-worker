@@ -9,6 +9,7 @@ shape regardless of what the model did.
 """
 from agent.llm import chat_json
 from agent.registry import register
+from agent.tools.files import read_invoice
 
 FIELDS = ["vendor", "invoice_number", "amount", "currency", "issue_date", "due_date"]
 
@@ -32,22 +33,34 @@ Return only the JSON object."""
 @register(
     "extract_invoice_fields",
     "Extract vendor, invoice_number, amount, currency, issue_date and due_date "
-    "from raw invoice text. Any field not present in the document is returned as "
-    "null -- it is never guessed. Check for nulls before using the result.",
+    "from an invoice, given its FILENAME. The tool reads the document itself, so "
+    "you do not need to read it first or pass its text. Any field not present in "
+    "the document is returned as null -- it is never guessed. Always check the "
+    "returned missing_fields before using the result.",
     {
         "type": "object",
         "properties": {
-            "text": {"type": "string", "description": "Raw invoice text from read_invoice"}
+            "filename": {
+                "type": "string",
+                "description": "Filename from list_invoices, e.g. NWL-2026-0915.txt",
+            }
         },
-        "required": ["text"],
+        "required": ["filename"],
     },
 )
-def extract_invoice_fields(text: str) -> dict:
+def extract_invoice_fields(filename: str) -> dict:
+    # The tool reads the document itself rather than accepting pasted text.
+    # Passing a whole invoice back through the model as a tool argument wastes
+    # a large amount of context and invites transcription errors -- the model
+    # should pass a reference, not a copy.
+    text = read_invoice(filename)
     raw = chat_json([
         {"role": "system", "content": _PROMPT},
         {"role": "user", "content": text},
     ])
-    return _coerce(raw)
+    out = _coerce(raw)
+    out["source_file"] = filename
+    return out
 
 
 def _coerce(raw: dict) -> dict:

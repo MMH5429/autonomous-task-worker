@@ -8,6 +8,7 @@ an hour before a deadline.
 """
 import json
 import os
+import re
 import time
 from typing import Any, Optional
 
@@ -55,7 +56,7 @@ def chat(
     tools: Optional[list[dict]] = None,
     json_mode: bool = False,
     temperature: float = 0.0,
-    max_retries: int = 3,
+    max_retries: int = 6,
 ) -> dict:
     """
     One chat completion. Returns the raw `message` object from the provider
@@ -86,7 +87,13 @@ def chat(
             if resp.status_code == 429 or resp.status_code >= 500:
                 last_err = f"HTTP {resp.status_code}: {resp.text[:300]}"
                 if attempt < max_retries - 1:
-                    time.sleep(delay)
+                    # Free tiers are token-per-minute limited and the server
+                    # tells us exactly how long to wait. Honour that instead of
+                    # guessing with a blind backoff.
+                    wait = _retry_after(resp) or delay
+                    print(f"      [llm] rate limited, waiting {wait:.1f}s "
+                          f"(attempt {attempt + 2}/{max_retries})")
+                    time.sleep(wait)
                     delay *= 2
                     continue
                 raise LLMError(f"LLM provider failed after {max_retries} attempts. {last_err}")
@@ -102,6 +109,23 @@ def chat(
             raise LLMError(f"Could not reach LLM provider at {url}: {e}") from e
 
     raise LLMError(f"LLM call failed: {last_err}")
+
+
+def _retry_after(resp) -> float | None:
+    """Seconds to wait, from the Retry-After header or the error message body."""
+    header = resp.headers.get("retry-after")
+    if header:
+        try:
+            return min(float(header) + 0.5, 30.0)
+        except ValueError:
+            pass
+    m = re.search(r"try again in ([0-9.]+)\s*s", resp.text or "", re.I)
+    if m:
+        return min(float(m.group(1)) + 0.5, 30.0)
+    m = re.search(r"try again in ([0-9.]+)m([0-9.]+)s", resp.text or "", re.I)
+    if m:
+        return min(float(m.group(1)) * 60 + float(m.group(2)) + 0.5, 30.0)
+    return None
 
 
 def chat_json(messages: list[dict], **kwargs) -> dict:

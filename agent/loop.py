@@ -131,7 +131,7 @@ class Agent:
                     "content": "If the task is complete, call finish. If not, call the next tool.",
                 })
                 if step > 2 and content:
-                    return {"status": "completed", "summary": content}
+                    return _as_finish(content)
                 continue
 
             messages.append(msg)
@@ -320,6 +320,31 @@ class Agent:
             print(f"\n  [{phase}] {text}")
         else:
             print(f"          {text}")
+
+
+def _as_finish(content: str) -> dict:
+    """
+    Accept a finish payload the model wrote as prose instead of calling the
+    tool. Models do this often enough that rejecting it would fail runs that
+    actually succeeded -- but we parse it rather than trusting the wording,
+    and the claim check still audits whatever summary comes out.
+    """
+    text = content.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        text = text.split(chr(10), 1)[-1] if chr(10) in text else text
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        try:
+            obj = json.loads(text[start:end + 1])
+            if isinstance(obj, dict) and "summary" in obj:
+                return {
+                    "status": obj.get("status", "completed"),
+                    "summary": str(obj["summary"]),
+                }
+        except json.JSONDecodeError:
+            pass
+    return {"status": "completed", "summary": content}
 
 
 def _compact(value: Any, limit: int = 300) -> str:
