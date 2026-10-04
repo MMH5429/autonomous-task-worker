@@ -19,6 +19,15 @@ from agent.trace import Trace
 
 
 def main() -> int:
+    # Windows consoles default to cp1252, which cannot encode characters the
+    # model routinely emits (non-breaking hyphens, box drawing, currency signs).
+    # Without this a perfectly good run dies in print().
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     ap = argparse.ArgumentParser(
         description="Autonomous AI task worker.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
