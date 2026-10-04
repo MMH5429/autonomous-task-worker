@@ -81,8 +81,10 @@ Put it in `.env` as `GROQ_API_KEY=gsk_...`.
 
 **Terminal 1 — the simulated company:**
 ```bash
-python mockco/erp.py --port 8099
+python mockco/erp.py --port 8099 --reset
 ```
+`--reset` clears the ERP database first, so each demo starts from a clean
+system. Leave it off to accumulate entries across runs.
 
 **Terminal 2 — the agent:**
 ```bash
