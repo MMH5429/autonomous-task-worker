@@ -297,12 +297,18 @@ class Agent:
         exec_result = self.execute()
         report = self.verify_phase(summary=exec_result.get("summary", ""))
 
-        # The decisive line: a run where every step succeeded is still FAILED if
-        # the system of record disagrees with what we believe we wrote.
-        if exec_result["status"] == "blocked":
-            outcome = "BLOCKED"
-        elif not report["verified"]:
+        # Verification is the authority on the outcome.
+        #
+        # FAILED is checked FIRST, before blocked. If the system of record
+        # disagrees with what we believe we wrote, that is a harder and more
+        # specific fact than "the agent stopped early" -- and it stays true
+        # whether the agent noticed the problem itself or not. Reporting such a
+        # run as merely BLOCKED would bury the one thing the operator needs to
+        # know: there is bad data in the ERP right now.
+        if not report["verified"]:
             outcome = "FAILED"
+        elif exec_result["status"] == "blocked":
+            outcome = "BLOCKED"
         else:
             outcome = "SUCCESS"
 
