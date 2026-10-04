@@ -61,7 +61,32 @@ def catalogue() -> str:
     )
 
 
+def bind_args(tool: Tool, args: dict) -> dict:
+    """
+    Reconcile model-supplied arguments against the tool's declared schema.
+
+    Models routinely invent an extra field or drop a required one. Passing that
+    straight to fn(**args) raises TypeError, which is a crash rather than
+    something the agent can observe and correct. So: unknown keys are dropped,
+    and missing required keys become a ToolError whose message tells the model
+    exactly what to supply. Pure function -- easy to test, easy to reason about.
+    """
+    props = (tool.json_schema or {}).get("properties", {}) or {}
+    required = (tool.json_schema or {}).get("required", []) or []
+
+    known = {k: v for k, v in args.items() if k in props}
+    missing = [k for k in required if known.get(k) is None]
+
+    if missing:
+        raise ToolError(
+            f"{tool.name} is missing required argument(s): {', '.join(missing)}. "
+            f"Expected: {', '.join(props) or '(none)'}."
+        )
+    return known
+
+
 def call(name: str, args: dict):
     if name not in TOOLS:
         raise ToolError(f"No such tool: {name}. Available: {', '.join(TOOLS)}")
-    return TOOLS[name].fn(**args)
+    tool = TOOLS[name]
+    return tool.fn(**bind_args(tool, args))

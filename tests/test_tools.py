@@ -93,4 +93,59 @@ class TestVerificationCatchesMismatch:
         report = verify_mod.verify(WorkingMemory(goal="summarise overdue invoices"))
         assert report["verified"] is True
         assert report["checked"] == 0
-        assert "read-only" in report["note"].lower()
+        assert "no write operations" in report["note"].lower()
+
+
+class TestClaimCheck:
+    """An agent that asserts it did work it never did must not pass."""
+
+    def test_claiming_a_write_that_never_happened_is_unsupported(self):
+        from agent.verify import _structural_claim_check
+        mem = WorkingMemory(goal="enter the invoice into our internal system")
+        mem.log_step("read_invoice", {"filename": "NWL-2026-0915.txt"}, "...text...")
+        result = _structural_claim_check(
+            "The accounts-payable entry has been successfully created in the ERP system.",
+            mem,
+        )
+        assert result is not None
+        assert result["supported"] is False
+
+    def test_a_real_write_is_not_flagged(self):
+        from agent.verify import _structural_claim_check
+        mem = WorkingMemory(goal="enter the invoice")
+        mem.log_write("erp_create_entry", sent={"amount": 1.0}, returned={"id": 3})
+        assert _structural_claim_check("The entry was created in the ERP.", mem) is None
+
+    def test_read_only_summary_is_not_flagged(self):
+        from agent.verify import _structural_claim_check
+        mem = WorkingMemory(goal="which invoices are overdue")
+        assert _structural_claim_check(
+            "Three invoices are overdue: NWL-2026-0117, ACM-2026-0342 and OCS-2026-0811.",
+            mem,
+        ) is None
+
+
+class TestArgumentBinding:
+    """Models invent extra fields and drop required ones. Neither should crash."""
+
+    def _tool(self):
+        import agent.loop  # noqa: F401  (registers tools)
+        from agent.registry import TOOLS
+        return TOOLS["erp_create_entry"]
+
+    def test_unknown_arguments_are_dropped(self):
+        from agent.registry import bind_args
+        bound = bind_args(self._tool(), {
+            "vendor": "Acme", "invoice_number": "A-1", "amount": 1.0,
+            "currency": "USD", "due_date": "2026-01-01",
+            "confidence": 0.9, "notes": "model invented this",
+        })
+        assert set(bound) == {"vendor", "invoice_number", "amount", "currency", "due_date"}
+
+    def test_missing_required_argument_is_a_correctable_error(self):
+        from agent.registry import bind_args
+        with pytest.raises(ToolError) as exc:
+            bind_args(self._tool(), {"vendor": "Acme"})
+        msg = str(exc.value)
+        assert "missing required argument" in msg
+        assert "due_date" in msg  # the message tells the model what to supply

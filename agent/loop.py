@@ -15,7 +15,7 @@ from typing import Any
 from agent import planner
 from agent.llm import chat, describe_provider
 from agent.memory import WorkingMemory
-from agent.registry import TOOLS, ToolError, to_api_schema
+from agent.registry import TOOLS, ToolError, bind_args, to_api_schema
 from agent.tools import erp, extract, files, human  # noqa: F401  (registers tools)
 from agent.tools.human import request_approval
 from agent.trace import Trace, timed
@@ -203,7 +203,7 @@ class Agent:
 
         try:
             with timed() as t:
-                result = tool.fn(**args)
+                result = tool.fn(**bind_args(tool, args))
         except ToolError as e:
             self.trace.record("execute", tool=name, tool_input=args, error=str(e))
             self.memory.log_step(name, args, None, error=str(e))
@@ -252,19 +252,14 @@ class Agent:
 
     # ------------------------------------------------------- verify/complete
 
-    def verify_phase(self) -> dict:
+    def verify_phase(self, summary: str = "") -> dict:
         with timed() as t:
-            report = verify_outcome(self.memory)
+            report = verify_outcome(self.memory, summary=summary, goal=self.goal)
         self.trace.record("verify", output=report, duration_ms=t.ms)
 
         if report["checked"] == 0:
-            self._say("VERIFY", report["note"])
-        elif report["verified"]:
-            self._say(
-                "VERIFY",
-                f"re-read {report['checked']} entry/entries from the ERP -- all fields match",
-            )
-        else:
+            self._say("VERIFY", "no writes to re-read")
+        elif report["diffs"]:
             self._say("VERIFY", "MISMATCH between what was sent and what is stored:")
             for d in report["diffs"]:
                 self._say(
@@ -272,6 +267,18 @@ class Agent:
                     f"  entry {d['entry_id']}.{d['field']}: "
                     f"sent {d['expected']!r}, stored {d['stored']!r}",
                 )
+        else:
+            self._say(
+                "VERIFY",
+                f"re-read {report['checked']} entry/entries from the ERP -- all fields match",
+            )
+
+        claim = report.get("claim_check") or {}
+        if claim.get("checked"):
+            if claim.get("supported"):
+                self._say("", "claim check: the summary is supported by the trace")
+            else:
+                self._say("", f"claim check FAILED: {claim.get('reason', '')}")
         return report
 
     # ---------------------------------------------------------------- driver
@@ -282,7 +289,7 @@ class Agent:
         self.understand()
         self.plan_phase()
         exec_result = self.execute()
-        report = self.verify_phase()
+        report = self.verify_phase(summary=exec_result.get("summary", ""))
 
         # The decisive line: a run where every step succeeded is still FAILED if
         # the system of record disagrees with what we believe we wrote.
