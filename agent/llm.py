@@ -97,6 +97,11 @@ def chat(
                     delay *= 2
                     continue
                 raise LLMError(f"LLM provider failed after {max_retries} attempts. {last_err}")
+            if resp.status_code == 400:
+                salvaged = _salvage_failed_tool_call(resp)
+                if salvaged is not None:
+                    return salvaged
+                raise LLMError(f"LLM provider returned HTTP 400: {resp.text[:500]}")
             if resp.status_code != 200:
                 raise LLMError(f"LLM provider returned HTTP {resp.status_code}: {resp.text[:500]}")
             return resp.json()["choices"][0]["message"]
@@ -109,6 +114,30 @@ def chat(
             raise LLMError(f"Could not reach LLM provider at {url}: {e}") from e
 
     raise LLMError(f"LLM call failed: {last_err}")
+
+
+def _salvage_failed_tool_call(resp) -> dict | None:
+    """
+    Recover from a provider-side tool-call rejection.
+
+    Some models (the gpt-oss family in particular) emit an out-of-band
+    `commentary` channel as if it were a tool. The provider rejects the whole
+    completion with 400 tool_use_failed, but it hands back the generated text
+    in `failed_generation` -- which is usually the finish payload. Discarding a
+    completed run over a provider quirk would be the wrong trade, so we return
+    the salvaged text as an ordinary assistant message and let the caller (and
+    the claim check) decide what it is worth.
+    """
+    try:
+        err = resp.json().get("error", {})
+    except Exception:
+        return None
+    if err.get("code") != "tool_use_failed":
+        return None
+    generation = err.get("failed_generation")
+    if not generation:
+        return None
+    return {"role": "assistant", "content": generation, "tool_calls": None}
 
 
 def _retry_after(resp) -> float | None:

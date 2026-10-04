@@ -32,6 +32,10 @@ plan assumed.
 Hard rules:
 - Never invent data. If a field is missing from a document, it is missing. Use
   ask_human rather than supplying a plausible value.
+- ask_human is ONLY for information that no document can tell you -- a missing
+  due date, an approval decision, a business judgement. Anything you can settle
+  by listing or reading documents, settle yourself. Do not ask which file to
+  use; find it.
 - Resolve ambiguity by inspecting data. If the goal says "the latest" and
   several candidates exist, read them and compare their dates.
 - Writes require human approval; this is handled for you, but a declined
@@ -337,6 +341,16 @@ def _as_finish(content: str) -> dict:
     if start != -1 and end > start:
         try:
             obj = json.loads(text[start:end + 1])
+            # A salvaged tool call nests the payload under "arguments".
+            if isinstance(obj, dict) and "summary" not in obj:
+                inner = obj.get("arguments")
+                if isinstance(inner, str):
+                    try:
+                        inner = json.loads(inner)
+                    except json.JSONDecodeError:
+                        inner = None
+                if isinstance(inner, dict):
+                    obj = inner
             if isinstance(obj, dict) and "summary" in obj:
                 return {
                     "status": obj.get("status", "completed"),

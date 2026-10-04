@@ -11,9 +11,10 @@ INVOICE_DIR = os.path.abspath(
 
 @register(
     "list_invoices",
-    "List every invoice document available in the company document store. "
-    "Returns filename, size and last-modified time. Filenames are not reliable "
-    "indicators of content -- read a document to learn its vendor and dates.",
+    "List every invoice document in the company document store. Returns each "
+    "filename plus a short preview of its opening lines, which is usually "
+    "enough to tell which vendor it belongs to. Use the preview to pick the "
+    "right document; read or extract it for exact values.",
     {"type": "object", "properties": {}, "required": []},
 )
 def list_invoices() -> list[dict]:
@@ -29,8 +30,31 @@ def list_invoices() -> list[dict]:
             "filename": fn,
             "size_bytes": st.st_size,
             "modified": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(),
+            "preview": _preview(p),
         })
     return out
+
+
+def _preview(path: str, lines: int = 2, width: int = 90) -> str:
+    """
+    First couple of non-blank lines of a document.
+
+    A real document store has an index; without one the agent has to read every
+    file just to find out who issued it, which wastes context and -- as a run
+    showed -- tempts it to ask a human a question it could answer itself.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            picked = []
+            for raw in fh:
+                raw = raw.strip()
+                if raw:
+                    picked.append(raw[:width])
+                if len(picked) >= lines:
+                    break
+        return " | ".join(picked)
+    except OSError:
+        return ""
 
 
 @register(
